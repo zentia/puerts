@@ -82,6 +82,13 @@ set(PUERTS_COMPILE_DEFINITIONS)
 list(APPEND PUERTS_COMPILE_DEFINITIONS USING_PUERTS_API_SHARED)
 
 
+# Option to force static library build (can be set by parent CMake)
+# Use direct variable check instead of option() to ensure parent settings take effect
+if(NOT DEFINED PAPI_BUILD_STATIC)
+    set(PAPI_BUILD_STATIC OFF)
+endif()
+message(STATUS "PapiNodejs: PAPI_BUILD_STATIC = ${PAPI_BUILD_STATIC}")
+
 if ( APPLE )
     if ( IOS )
         set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)")
@@ -89,6 +96,10 @@ if ( APPLE )
            ${PUERTS_SRC} ${PUERTS_INC}
         )
 		set_xcode_property (PapiNodejs IPHONEOS_DEPLOYMENT_TARGET "7.0" "all")
+    elseif (PAPI_BUILD_STATIC)
+        add_library(PapiNodejs STATIC
+            ${PUERTS_SRC} ${PUERTS_INC}
+        )
     else ()
         add_library(PapiNodejs SHARED
             ${PUERTS_SRC} ${PUERTS_INC}
@@ -100,6 +111,10 @@ if ( APPLE )
         )
     endif ()
 elseif ( SWITCH_PLATFORM )
+    add_library(PapiNodejs STATIC
+        ${PUERTS_SRC} ${PUERTS_INC}
+    )
+elseif (PAPI_BUILD_STATIC)
     add_library(PapiNodejs STATIC
         ${PUERTS_SRC} ${PUERTS_INC}
     )

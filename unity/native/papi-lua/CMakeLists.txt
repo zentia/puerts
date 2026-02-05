@@ -83,6 +83,13 @@ set(PAPI_SRC
 file(GLOB EASTL_SRC "../EASTL/source/*.cpp")
 file(GLOB_RECURSE EASTL_HEADS "../EASTL/include/EASTL/**.h")
 
+# Option to force static library build (can be set by parent CMake)
+# Use direct variable check instead of option() to ensure parent settings take effect
+if(NOT DEFINED PAPI_BUILD_STATIC)
+    set(PAPI_BUILD_STATIC OFF)
+endif()
+message(STATUS "PapiLua: PAPI_BUILD_STATIC = ${PAPI_BUILD_STATIC}")
+
 if (APPLE)
     if (IOS)
         ADD_DEFINITIONS(-DLUA_USE_IOS) # Despite claiming to be ISO C, iOS does not implement 'system'.(iOS11)
@@ -92,6 +99,12 @@ if (APPLE)
            ${PAPI_SRC}
         )
 		set_xcode_property (PapiLua IPHONEOS_DEPLOYMENT_TARGET "7.0" "all")
+    elseif (PAPI_BUILD_STATIC)
+        ADD_DEFINITIONS(-DLUA_USE_MACOSX)
+        add_library(PapiLua STATIC
+            ${LUA_CORE}
+            ${PAPI_SRC}
+        )
     else ()
         ADD_DEFINITIONS(-DLUA_USE_MACOSX) #osx platform emmylua debugger must have this option or can not load cpath
         add_library(PapiLua SHARED
@@ -110,6 +123,11 @@ elseif ("${CMAKE_SYSTEM_NAME}" STREQUAL "Switch")
         ${PAPI_SRC}
     )
     target_compile_options(PapiLua PRIVATE -m64 -mcpu=cortex-a57+fp+simd+crypto+crc -fno-common -fno-short-enums -ffunction-sections -fdata-sections -fPIC -fms-extensions)
+elseif (PAPI_BUILD_STATIC)
+    add_library(PapiLua STATIC
+        ${LUA_CORE}
+        ${PAPI_SRC}
+    )
 else ( )
     add_library(PapiLua SHARED
         ${LUA_CORE}
@@ -129,7 +147,12 @@ else ( )
     )
 endif ( )
 
-target_compile_definitions(PapiLua PRIVATE EASTL_DLL USING_EASTL)
+# EASTL import configuration: only define EASTL_DLL when EASTL is in a shared library
+if(NOT PAPI_BUILD_STATIC AND NOT PUERTS_BUILD_STATIC)
+    target_compile_definitions(PapiLua PRIVATE EASTL_DLL USING_EASTL)
+else()
+    target_compile_definitions(PapiLua PRIVATE USING_EASTL)
+endif()
 #target_compile_definitions(PapiLua PRIVATE CHAR8_T_DEFINED)
 target_compile_definitions(PapiLua PUBLIC EA_DEPRECATIONS_FOR_2024_APRIL=EA_DISABLED)
 target_compile_definitions(PapiLua PUBLIC EA_DEPRECATIONS_FOR_2024_SEPT=EA_DISABLED)

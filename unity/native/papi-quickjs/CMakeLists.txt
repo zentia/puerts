@@ -147,7 +147,14 @@ if(NOT MSVC)
     list(APPEND qjs_libs m)
 endif()
 
-if ( (APPLE AND IOS) OR SWITCH_PLATFORM OR (CMAKE_SYSTEM_NAME MATCHES "Emscripten") )
+# Option to force static library build (can be set by parent CMake)
+# Use direct variable check instead of option() to ensure parent settings take effect
+if(NOT DEFINED PAPI_BUILD_STATIC)
+    set(PAPI_BUILD_STATIC OFF)
+endif()
+message(STATUS "PapiQuickjs: PAPI_BUILD_STATIC = ${PAPI_BUILD_STATIC}")
+
+if ( PAPI_BUILD_STATIC OR (APPLE AND IOS) OR SWITCH_PLATFORM OR (CMAKE_SYSTEM_NAME MATCHES "Emscripten") )
     add_library(PapiQuickjs STATIC ${qjs_sources} ${papi_sources})
 else ()
     add_library(PapiQuickjs SHARED ${qjs_sources} ${papi_sources}) # if add eastl_headers will undefined symbol: __udivti3 __udivmodti4 
@@ -163,7 +170,12 @@ target_link_libraries(PapiQuickjs PUBLIC ${qjs_libs} PuertsCore)
 target_compile_definitions(PapiQuickjs PUBLIC EA_DEPRECATIONS_FOR_2024_APRIL=EA_DISABLED)
 target_compile_definitions(PapiQuickjs PUBLIC EA_DEPRECATIONS_FOR_2024_SEPT=EA_DISABLED)
 target_compile_definitions(PapiQuickjs PUBLIC EA_DEPRECATIONS_FOR_2025_APRIL=EA_DISABLED)
-target_compile_definitions(PapiQuickjs PRIVATE EASTL_DLL USING_EASTL)
+# EASTL import configuration: only define EASTL_DLL when EASTL is in a shared library
+if(NOT PAPI_BUILD_STATIC AND NOT PUERTS_BUILD_STATIC)
+    target_compile_definitions(PapiQuickjs PRIVATE EASTL_DLL USING_EASTL)
+else()
+    target_compile_definitions(PapiQuickjs PRIVATE USING_EASTL)
+endif()
 target_compile_definitions(PapiQuickjs PUBLIC USING_REGISTER_API_SHARED)
 target_compile_options(PapiQuickjs PRIVATE
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:

@@ -39,9 +39,19 @@ set(eastl_sources
 file(GLOB_RECURSE eastl_headers "../EASTL/include/EASTL/**.h")
 
 
-if ( APPLE AND IOS OR SWITCH_PLATFORM OR (CMAKE_SYSTEM_NAME MATCHES "Emscripten") )
+# Option to force static library build (can be set by parent CMake)
+# Use cache variable with FORCE to ensure parent settings take effect
+if(NOT DEFINED PUERTS_BUILD_STATIC)
+    set(PUERTS_BUILD_STATIC OFF)
+endif()
+
+message(STATUS "PuertsCore: PUERTS_BUILD_STATIC = ${PUERTS_BUILD_STATIC}")
+
+if ( PUERTS_BUILD_STATIC OR (APPLE AND IOS) OR SWITCH_PLATFORM OR (CMAKE_SYSTEM_NAME MATCHES "Emscripten") )
+    message(STATUS "PuertsCore: Building as STATIC library")
     add_library(PuertsCore STATIC ${puerts_sources} ${eastl_sources})
 else ()
+    message(STATUS "PuertsCore: Building as SHARED library")
     add_library(PuertsCore SHARED ${puerts_sources} ${eastl_sources}) # if add eastl_headers will undefined symbol: __udivti3 __udivmodti4 
 endif()
 
@@ -50,7 +60,17 @@ target_compile_definitions(PuertsCore PUBLIC BUILDING_PUERTS_API_SHARED)
 target_compile_definitions(PuertsCore PUBLIC EA_DEPRECATIONS_FOR_2024_APRIL=EA_DISABLED)
 target_compile_definitions(PuertsCore PUBLIC EA_DEPRECATIONS_FOR_2024_SEPT=EA_DISABLED)
 target_compile_definitions(PuertsCore PUBLIC EA_DEPRECATIONS_FOR_2025_APRIL=EA_DISABLED)
-target_compile_definitions(PuertsCore PRIVATE EASTL_DLL BUILDING_EASTL)
+
+# EASTL DLL export/import configuration:
+# - When building as SHARED library: define EASTL_DLL and BUILDING_EASTL for dllexport
+# - When building as STATIC library: don't define EASTL_DLL to avoid dllimport issues in consumers
+if(NOT PUERTS_BUILD_STATIC)
+    target_compile_definitions(PuertsCore PRIVATE EASTL_DLL BUILDING_EASTL)
+else()
+    # For static builds, just define BUILDING_EASTL without EASTL_DLL
+    # This ensures EASTL_API expands to nothing (no dllexport/dllimport)
+    target_compile_definitions(PuertsCore PRIVATE BUILDING_EASTL)
+endif()
 target_compile_options(PuertsCore PRIVATE
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>>:
         -fno-exceptions

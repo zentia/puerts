@@ -102,6 +102,13 @@ if ( WITH_WEBSOCKET )
     list(APPEND PUERTS_SRC ${PROJECT_SOURCE_DIR}/../../../unreal/Puerts/Source/JsEnv/Private/WebSocketImpl.cpp)
 endif()
 
+# Option to force static library build (can be set by parent CMake)
+# Use direct variable check instead of option() to ensure parent settings take effect
+if(NOT DEFINED PAPI_BUILD_STATIC)
+    set(PAPI_BUILD_STATIC OFF)
+endif()
+message(STATUS "PapiV8: PAPI_BUILD_STATIC = ${PAPI_BUILD_STATIC}")
+
 if ( APPLE )
     if ( IOS )
         set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD)")
@@ -109,6 +116,10 @@ if ( APPLE )
            ${PUERTS_SRC} ${PUERTS_INC}
         )
         set_xcode_property (PapiV8 IPHONEOS_DEPLOYMENT_TARGET "7.0" "all")
+    elseif (PAPI_BUILD_STATIC)
+        add_library(PapiV8 STATIC
+            ${PUERTS_SRC} ${PUERTS_INC}
+        )
     else ()
         add_library(PapiV8 SHARED
             ${PUERTS_SRC} ${PUERTS_INC}
@@ -120,6 +131,10 @@ if ( APPLE )
         )
     endif ()
 elseif ( SWITCH_PLATFORM )
+    add_library(PapiV8 STATIC
+        ${PUERTS_SRC} ${PUERTS_INC}
+    )
+elseif (PAPI_BUILD_STATIC)
     add_library(PapiV8 STATIC
         ${PUERTS_SRC} ${PUERTS_INC}
     )

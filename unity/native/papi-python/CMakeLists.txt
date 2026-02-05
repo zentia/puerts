@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.11)
 
 project(PapiPython LANGUAGES C CXX)
 
@@ -89,7 +89,18 @@ set(PAPI_SRC
         source/PapiExport.cpp
 )
 
-add_library(PapiPython SHARED ${PAPI_SRC})
+# Option to force static library build (can be set by parent CMake)
+# Use direct variable check instead of option() to ensure parent settings take effect
+if(NOT DEFINED PAPI_BUILD_STATIC)
+    set(PAPI_BUILD_STATIC OFF)
+endif()
+message(STATUS "PapiPython: PAPI_BUILD_STATIC = ${PAPI_BUILD_STATIC}")
+
+if(PAPI_BUILD_STATIC)
+    add_library(PapiPython STATIC ${PAPI_SRC})
+else()
+    add_library(PapiPython SHARED ${PAPI_SRC})
+endif()
 
 target_link_libraries(PapiPython
         ${Python3_LIBRARIES}
@@ -121,7 +132,12 @@ if(UNIX AND NOT APPLE AND NOT ANDROID)
     target_link_libraries(PapiPython dl)
 endif()
 
-target_compile_definitions(PapiPython PRIVATE EASTL_DLL USING_EASTL)
+# EASTL import configuration: only define EASTL_DLL when EASTL is in a shared library
+if(NOT PAPI_BUILD_STATIC AND NOT PUERTS_BUILD_STATIC)
+    target_compile_definitions(PapiPython PRIVATE EASTL_DLL USING_EASTL)
+else()
+    target_compile_definitions(PapiPython PRIVATE USING_EASTL)
+endif()
 target_compile_definitions(PapiPython PUBLIC EA_DEPRECATIONS_FOR_2024_APRIL=EA_DISABLED)
 target_compile_definitions(PapiPython PUBLIC EA_DEPRECATIONS_FOR_2024_SEPT=EA_DISABLED)
 target_compile_definitions(PapiPython PUBLIC EA_DEPRECATIONS_FOR_2025_APRIL=EA_DISABLED)
