@@ -259,6 +259,9 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           backend: papi-nodejs
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14' 
       - name: papi-python
         uses: ./.github/workflows/composites/unity-build-plugins/linux/
         with:
@@ -316,6 +319,8 @@ jobs:
           cp LICENSE unity/upms/lua/
           cp LICENSE unity/upms/python/
           cp LICENSE unity/upms/quickjs/
+          cp LICENSE unity/upms/agent/
+          cp LICENSE unity/upms/mcp/
           cd unity/upms
           CORE_VERSION=$(node -p "require('./core/package.json').version")
           V8_VERSION=$(node -p "require('./v8/package.json').version")
@@ -324,6 +329,8 @@ jobs:
           NODEJS_VERSION=$(node -p "require('./nodejs/package.json').version")
           PYTHON_VERSION=$(node -p "require('./python/package.json').version")
           WEBGL_VERSION=$(node -p "require('./webgl/package.json').version")
+          AGENT_VERSION=$(node -p "require('./agent/package.json').version")
+          MCP_VERSION=$(node -p "require('./mcp/package.json').version")
           echo "CORE_VERSION=${CORE_VERSION}" >> $GITHUB_ENV
           echo "V8_VERSION=${V8_VERSION}" >> $GITHUB_ENV
           echo "QUICKJS_VERSION=${QUICKJS_VERSION}" >> $GITHUB_ENV
@@ -331,6 +338,9 @@ jobs:
           echo "NODEJS_VERSION=${NODEJS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
           echo "WEBGL_VERSION=${WEBGL_VERSION}" >> $GITHUB_ENV
+          echo "AGENT_VERSION=${AGENT_VERSION}" >> $GITHUB_ENV
+          echo "MCP_VERSION=${MCP_VERSION}" >> $GITHUB_ENV
+          echo "SKILLS_VERSION=${CORE_VERSION}" >> $GITHUB_ENV
           tar cvfz ../../PuerTS_Core_${CORE_VERSION}.tar.gz core
           tar cvfz ../../PuerTS_V8_${V8_VERSION}.tar.gz v8
           tar cvfz ../../PuerTS_Quickjs_${QUICKJS_VERSION}.tar.gz quickjs
@@ -338,6 +348,10 @@ jobs:
           tar cvfz ../../PuerTS_Nodejs_${NODEJS_VERSION}.tar.gz nodejs
           tar cvfz ../../PuerTS_Python_${PYTHON_VERSION}.tar.gz python
           tar cvfz ../../PuerTS_Webgl_${WEBGL_VERSION}.tar.gz webgl
+          tar cvfz ../../PuerTS_Agent_${AGENT_VERSION}.tar.gz agent
+          tar cvfz ../../PuerTS_Mcp_${MCP_VERSION}.tar.gz mcp
+          cd ../skills
+          tar cvfz ../../Unity_Skills_${CORE_VERSION}.tar.gz .
           
       - name: Create Release
         id: create_release
@@ -346,9 +360,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           body: |
-            [`changelog.md`](https://github.com/Tencent/puerts/blob/master/unity/upms/core/changelog.md) [`changelog-hans.md`](https://github.com/Tencent/puerts/blob/master/unity/upms/core/changelog-hans.md)
-            
-            > difference between Node.js/Quickjs/V8: [wiki](https://github.com/Tencent/puerts/wiki/%5BUnity%5D-Release%E9%87%8C%E5%90%84%E4%B8%AAPlugin%E7%9A%84%E5%8C%BA%E5%88%AB)
+            [`changelog`](https://github.com/Tencent/puerts/blob/master/unity/changelog.md) [`变更`](https://github.com/Tencent/puerts/blob/master/unity/changelog-hans.md)
           tag_name: Unity_v${{ github.event.inputs.tag_name }}
           release_name: Unity_v${{ github.event.inputs.tag_name }},PESAPI_VERSION:${{ env.PESAPI_VERSION }}
           draft: false
@@ -427,6 +439,36 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./PuerTS_Webgl_${{ env.WEBGL_VERSION }}.tar.gz
           asset_name: "PuerTS_Webgl_${{ env.WEBGL_VERSION }}.tar.gz"
+          asset_content_type: application/tgz
+
+      - name: Upload Agent
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./PuerTS_Agent_${{ env.AGENT_VERSION }}.tar.gz
+          asset_name: "PuerTS_Agent_${{ env.AGENT_VERSION }}.tar.gz"
+          asset_content_type: application/tgz
+
+      - name: Upload MCP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./PuerTS_Mcp_${{ env.MCP_VERSION }}.tar.gz
+          asset_name: "PuerTS_Mcp_${{ env.MCP_VERSION }}.tar.gz"
+          asset_content_type: application/tgz
+
+      - name: Upload Unity Skills
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Unity_Skills_${{ env.SKILLS_VERSION }}.tar.gz
+          asset_name: "Unity_Skills_${{ env.SKILLS_VERSION }}.tar.gz"
           asset_content_type: application/tgz
 
       # - name: Trigger demo/upm repository update

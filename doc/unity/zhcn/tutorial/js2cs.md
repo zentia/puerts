@@ -1,14 +1,26 @@
 # 在Javascript调用C#
 
+> 💡 PuerTS 3.0 同时支持 [Lua](./lua2cs.md) 和 [Python](./python2cs.md) 调用 C#，语法各有不同，可点击链接查看对应教程。
+
 在上一篇中，我们简单试了一下Hello world
 
 ```csharp
-//1. Hello World
+// Hello World（3.0 推荐写法）
+void Start() {
+    var env = new Puerts.ScriptEnv(new Puerts.BackendV8());
+    env.Eval(@"
+        console.log('hello world');
+    ");
+    env.Dispose();
+}
+
+// Hello World（兼容写法，JsEnv 在 3.0 中已标记为 [Obsolete]）
 void Start() {
     Puerts.JsEnv env = new Puerts.JsEnv();
     env.Eval(@"
         console.log('hello world');
     ");
+    env.Dispose();
 }
 ```
 
@@ -21,11 +33,12 @@ void Start() {
 ```csharp
 //2. 创建C#对象
 void Start() {
-    Puerts.JsEnv env = new Puerts.JsEnv();
+    var env = new Puerts.ScriptEnv(new Puerts.BackendV8());
     env.Eval(@"
         console.log(new CS.UnityEngine.Vector3(1, 2, 3));
         // (1.0, 2.0, 3.0)
     ");
+    env.Dispose();
 }
 ```
 在本例中，我们直接在 Javascript 中创建了一个 C# 的Vector!
@@ -45,7 +58,7 @@ void Start() {
 ```csharp
 //3. 调用C#函数或对象方法
 void Start() {
-    Puerts.JsEnv env = new Puerts.JsEnv();
+    var env = new Puerts.ScriptEnv(new Puerts.BackendV8());
     env.Eval(@"
         CS.UnityEngine.Debug.Log('Hello World');
         const rect = new CS.UnityEngine.Rect(0, 0, 2, 2);
@@ -53,6 +66,7 @@ void Start() {
         rect.width = 0.1
         CS.UnityEngine.Debug.Log(rect.Contains(CS.UnityEngine.Vector2.one)); // False
     ");
+    env.Dispose();
 }
 ```
 可以看出，不管是函数调用还是属性访问/赋值，用法上都和 C# 一模一样。
@@ -73,7 +87,7 @@ class Example4 {
     }
 }
 void Start() {
-    Puerts.JsEnv env = new Puerts.JsEnv();
+    var env = new Puerts.ScriptEnv(new Puerts.BackendV8());
     env.Eval(@"
         // 通过puer.$ref创建一个可以用于使用out/ref参数的变量
         let p1 = puer.$ref();
@@ -90,11 +104,46 @@ void Start() {
         lst.Add(2);
         lst.Add(4);
     ");
+    env.Dispose();
 }
 ```
 也并没有非常复杂，就可以完成了！
 
 > 需要注意的是，可能你会想“Typescript明明支持泛型，为什么不用上呢？“。遗憾的是，Typescript泛型只是一个编译时的概念，在实际运行的时候还是运行的是Javascript，因此还是需要puer.$generic来处理。
+
+----------------------------
+### 数组与索引器访问
+
+C# 中的 `[]` 操作符（包括数组索引、List 索引、Dictionary 索引以及任何自定义索引器）在 JS 中**不能**直接使用 `[]` 语法访问，必须使用 `get_Item()` / `set_Item()` 方法：
+
+```csharp
+void Start() {
+    var env = new Puerts.ScriptEnv(new Puerts.BackendV8());
+    env.Eval(@"
+        // 创建 C# 数组
+        let arr = CS.System.Array.CreateInstance(puer.$typeof(CS.System.Int32), 3);
+        arr.set_Item(0, 42);           // 等价于 C# 的 arr[0] = 42
+        let val = arr.get_Item(0);     // 等价于 C# 的 val = arr[0]
+        console.log(val);              // 42
+
+        // 同样适用于 List<T>
+        let List = puer.$generic(CS.System.Collections.Generic.List$1, CS.System.Int32);
+        let lst = new List();
+        lst.Add(10);
+        let first = lst.get_Item(0);   // 等价于 C# 的 lst[0]
+        lst.set_Item(0, 20);           // 等价于 C# 的 lst[0] = 20
+
+        // 同样适用于 Dictionary<TKey, TValue>
+        let Dict = puer.$generic(CS.System.Collections.Generic.Dictionary$2, CS.System.String, CS.System.Int32);
+        let dict = new Dict();
+        dict.set_Item('key', 100);     // 等价于 C# 的 dict['key'] = 100
+        let v = dict.get_Item('key');  // 等价于 C# 的 v = dict['key']
+    ");
+    env.Dispose();
+}
+```
+
+> ⚠️ **重要**：这是 JS 和 C# 之间的一个关键差异。JS 的 `[]` 操作符只能用于 JS 原生对象，对于 C# 对象的索引访问必须通过 `get_Item()` / `set_Item()` 方法。
 
 ----------------------------
 ### typeof与运算符重载
@@ -103,7 +152,7 @@ void Start() {
 ```csharp
 //5. typeof/运算符重载
 void Start() {
-    Puerts.JsEnv env = new Puerts.JsEnv();
+    var env = new Puerts.ScriptEnv(new Puerts.BackendV8());
     env.Eval(@"
         let go = new CS.UnityEngine.GameObject('testObject');
         go.AddComponent(puer.$typeof(CS.UnityEngine.ParticleSystem));
@@ -113,6 +162,7 @@ void Start() {
         
         console.log(ret) // (0.0, 1600.0, 0.0)
     ");
+    env.Dispose();
 }
 ```
 因为 C# 的`typeof`无法通过 C# 命名空间的方式访问，有点类似关键字的角色，因此PuerTS 提供内置方法`$typeof`访问
@@ -139,7 +189,7 @@ class Example6 {
 }
 
 void Start() {
-    Puerts.JsEnv env = new Puerts.JsEnv();
+    var env = new Puerts.ScriptEnv(new Puerts.BackendV8());
     env.Eval(@"
         (async function() {
             let task = obj.GetFileLength('xxxx');
@@ -150,9 +200,12 @@ void Start() {
             console.error(err)
         })
     ");
+    env.Dispose();
 }
 ```
 对于 C# 的`async`函数，JS 侧通过`puer.$promise`包装一下 C# 返回的 task，即可 await 调用了
 
 -------------
-这一部分是有关 JS 调用 C# 的。下一部分我们反过来，介绍 C# 调用 JS
+这一部分是有关 JS 调用 C# 的。下一部分我们反过来，介绍 [C# 调用 JS](./cs2js.md)。
+
+> 📖 其他语言调用 C# 的教程：[Lua 调用 C#](./lua2cs.md) | [Python 调用 C#](./python2cs.md) | [三语言对比速查表](./lang-comparison.md)

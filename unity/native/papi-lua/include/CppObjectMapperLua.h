@@ -1,13 +1,7 @@
 #pragma once
 
 #include "pesapi.h"
-#if defined(__EMSCRIPTEN__)
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#else
 #include "lua.hpp"
-#endif
 #include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
 #include <EASTL/allocator_malloc.h>
@@ -35,6 +29,8 @@ struct pesapi_callback_info__
     int ArgStart; // 0 or 1
     int RetNum;
     void* Data;
+    int HasError; // deferred error flag, similar to xlua's csharp_function_wrap pattern
+    int ErrorMsgIdx; // absolute stack index of the error message
 };
 
 struct PesapiCallbackData

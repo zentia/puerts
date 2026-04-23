@@ -15,8 +15,8 @@ namespace Puerts
 {
     public class ScriptObject : IDisposable
     {
-        internal IntPtr apis;
-        internal IntPtr objRef;
+        public IntPtr apis;
+        public IntPtr objRef;
         internal Dictionary<Type, Delegate> delegateCache = new Dictionary<Type, Delegate>();
         private ScriptEnv scripEnv;
 
@@ -91,7 +91,7 @@ namespace Puerts
         {
             if (disposed) return;
 #if THREAD_SAFE
-            lock(jsEnv) 
+            lock(scripEnv) 
             {
 #endif
             disposed = true;
