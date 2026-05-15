@@ -189,3 +189,27 @@ target_compile_options(PapiQuickjs PRIVATE
         /GR-   # 禁用RTTI
     >
 )
+
+# QuickJS's libbf.c uses GCC-style operator overloading on __m256d
+# (e.g. `r + m`, `a * b`) inside its FFT/NTT bignum path. MSVC's intrinsic
+# headers do not support those operators, so the AVX2 fast path doesn't
+# compile under cl.exe. The parent CMakeLists adds /arch:AVX2 globally,
+# which makes MSVC predefine __AVX2__ and pull the offending code in.
+#
+# /U doesn't undefine MSVC's compiler-predefined __AVX2__ (only command-
+# line /D macros can be undefined that way), so we instead override the
+# /arch: switch on libbf.c specifically. MSVC's documented behavior is
+# that the LAST /arch: on the command line wins, and CMake appends
+# source-level COMPILE_OPTIONS after target+directory options. We thus
+# follow up with /arch:SSE2, which is MSVC's default for x64 and turns
+# off the __AVX2__ predefine.
+#
+# We don't lose anything functionally: libbf's AVX2 fast path is only
+# entered for >=100-limb bignum multiplication, which scripts won't
+# trigger. clang-cl is fine with the GCC-style operators, so only patch
+# real MSVC.
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set_source_files_properties(quickjs/libbf.c PROPERTIES
+        COMPILE_OPTIONS "/arch:SSE2"
+    )
+endif()
